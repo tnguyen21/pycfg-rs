@@ -102,7 +102,7 @@ fn test_text_output_format() {
 // ---------------------------------------------------------------------------
 
 fn corpus_dir(name: &str) -> Option<String> {
-    let path = format!("corpora/{}/", name);
+    let path = format!("benchmark/corpora/{}/", name);
     if Path::new(&path).exists() {
         Some(path)
     } else {

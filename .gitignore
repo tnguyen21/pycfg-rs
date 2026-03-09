@@ -1,5 +1,5 @@
 /target
-/corpora
 .claude/
-bench/.venv/
 __pycache__/
+benchmark/.venv/
+benchmark/corpora/

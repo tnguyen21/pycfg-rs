@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CORPORA_DIR="$SCRIPT_DIR/../corpora"
+CORPORA_DIR="$SCRIPT_DIR/../benchmark/corpora"
 
 mkdir -p "$CORPORA_DIR"
 

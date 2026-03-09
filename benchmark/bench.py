@@ -9,10 +9,10 @@ python-graphs requires importing modules at runtime, so it can only analyze
 files with no unresolved imports. We report success rates alongside timings.
 
 Usage:
-    source bench/.venv/bin/activate
-    python bench/bench.py                               # test fixtures
-    python bench/bench.py --corpus corpora/flask/src     # real codebase
-    python bench/bench.py --corpus corpora/rich/rich     # large codebase
+    source benchmark/.venv/bin/activate
+    python benchmark/bench.py                               # test fixtures
+    python benchmark/bench.py --corpus benchmark/corpora/flask/src     # real codebase
+    python benchmark/bench.py --corpus benchmark/corpora/rich/rich     # large codebase
 """
 
 import argparse
@@ -261,9 +261,9 @@ def main():
         epilog="""
 Examples:
   python bench/bench.py                                  # test fixtures (tiny)
-  python bench/bench.py --corpus corpora/requests/src    # requests (~18 files)
-  python bench/bench.py --corpus corpora/flask/src/flask # flask (~20 files)
-  python bench/bench.py --corpus corpora/rich/rich       # rich (~70 files)
+  python benchmark/bench.py --corpus benchmark/corpora/requests/src    # requests (~18 files)
+  python benchmark/bench.py --corpus benchmark/corpora/flask/src/flask # flask (~20 files)
+  python benchmark/bench.py --corpus benchmark/corpora/rich/rich       # rich (~70 files)
 """,
     )
     parser.add_argument("--corpus", default=None, help="Directory of Python files to analyze")

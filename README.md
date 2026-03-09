@@ -2,7 +2,7 @@
 
 Fast, Rust-based control flow graph (CFG) generator for Python. Parses Python source files and produces intra-procedural control flow graphs for each function, without requiring a Python runtime.
 
-Sibling tool to [pycallgraph-rs](https://github.com/tau/pycallgraph-rs) (`pycg`) — together they cover inter-procedural (call graphs) and intra-procedural (control flow) static analysis for Python.
+Sibling tool to [pycallgraph-rs](https://github.com/tnguyen21/pycallgraph-rs) (`pycg`) — together they cover inter-procedural (call graphs) and intra-procedural (control flow) static analysis for Python.
 
 ## Installation
 
@@ -137,7 +137,40 @@ Each function's CFG includes:
 ```bash
 cargo test                           # Run all tests
 ./scripts/bootstrap-corpora.sh       # Clone test corpora (requests, flask, rich)
-cargo test -- --nocapture             # See corpus test output
+cargo test -- --nocapture            # See corpus test output
+```
+
+## Benchmarks
+
+Comparative benchmarks against [staticfg](https://github.com/coetaur0/staticfg) and [python-graphs](https://github.com/google-research/python-graphs) (Google).
+
+### Results on `rich` (100 files, 911 functions, Apple M4 Pro)
+
+| Tool | Files parsed | Functions | Min time | Per-function | Throughput |
+|------|-------------|-----------|----------|-------------|------------|
+| **pycfg-rs** | **100/100 (100%)** | **984** | 65ms | 0.066 ms/func | **15,068 func/sec** |
+| staticfg | 74/100 (74%) | 239 | 84ms | 0.350 ms/func | 2,860 func/sec |
+| python-graphs | 13/100 (13%) | 37 | 7ms | 0.192 ms/func | 5,211 func/sec |
+
+**Per-function**: pycfg-rs is **5.3x faster** than staticfg and **2.9x faster** than python-graphs.
+
+The Python tools appear faster in wall-clock time only because they analyze far fewer functions — staticfg crashes on 26% of files, and python-graphs requires runtime imports so only 13% of files are importable.
+
+### Running benchmarks
+
+```bash
+# Setup (one-time)
+./scripts/bootstrap-corpora.sh                                           # clone test corpora
+cd benchmark && uv venv --python 3.12 .venv && cd ..                     # create venv
+source benchmark/.venv/bin/activate
+uv pip install staticfg python-graphs                                    # install competitors
+
+# Run
+cargo build --release                                                    # build optimized binary
+python benchmark/bench.py                                                # test fixtures (tiny)
+python benchmark/bench.py --corpus benchmark/corpora/requests/src        # requests (~18 files)
+python benchmark/bench.py --corpus benchmark/corpora/flask/src/flask     # flask (~24 files)
+python benchmark/bench.py --corpus benchmark/corpora/rich/rich           # rich (~100 files)
 ```
 
 ## Performance
