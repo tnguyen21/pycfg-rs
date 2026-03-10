@@ -2,6 +2,11 @@
 name = "pycfg-rs"
 version = "0.1.0"
 edition = "2024"
+description = "Fast, Rust-based control flow graph generator for Python"
+license = "MIT"
+repository = "https://github.com/tnguyen21/pycfg-rs"
+keywords = ["python", "control-flow-graph", "static-analysis", "cfg", "cyclomatic-complexity"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "pycfg"
@@ -12,9 +17,9 @@ name = "pycfg_rs"
 path = "src/lib.rs"
 
 [dependencies]
-ruff_python_ast = { git = "https://github.com/astral-sh/ruff.git" }
-ruff_python_parser = { git = "https://github.com/astral-sh/ruff.git" }
-ruff_text_size = { git = "https://github.com/astral-sh/ruff.git" }
+ruff_python_ast = { git = "https://github.com/astral-sh/ruff.git", rev = "b0617e8a9c" }
+ruff_python_parser = { git = "https://github.com/astral-sh/ruff.git", rev = "b0617e8a9c" }
+ruff_text_size = { git = "https://github.com/astral-sh/ruff.git", rev = "b0617e8a9c" }
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"
 log = "0.4"
@@ -25,3 +30,8 @@ serde_json = "1"
 
 [dev-dependencies]
 tempfile = "3"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

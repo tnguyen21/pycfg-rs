@@ -23,10 +23,6 @@ struct Cli {
     #[arg(long)]
     explicit_exceptions: bool,
 
-    /// Root directory for module name resolution
-    #[arg(long, short = 'r')]
-    root: Option<String>,
-
     /// Enable verbose logging (-v info, -vv debug)
     #[arg(long, short = 'v', action = clap::ArgAction::Count)]
     verbose: u8,
@@ -135,7 +131,8 @@ fn main() -> Result<()> {
                 write_output(&mut stdout, &json)?;
             } else {
                 let json =
-                    serde_json::to_string_pretty(&all_cfgs).unwrap_or_else(|e| format!("{{\"error\": \"{}\"}}", e));
+                    serde_json::to_string_pretty(&all_cfgs)
+                        .unwrap_or_else(|e| serde_json::json!({"error": e.to_string()}).to_string());
                 write_output(&mut stdout, &json)?;
             }
         }

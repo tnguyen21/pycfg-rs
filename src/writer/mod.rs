@@ -15,7 +15,8 @@ pub fn write_text(file_cfg: &FileCfg) -> String {
 
 /// Write JSON output for a FileCfg.
 pub fn write_json(file_cfg: &FileCfg) -> String {
-    serde_json::to_string_pretty(file_cfg).unwrap_or_else(|e| format!("{{\"error\": \"{}\"}}", e))
+    serde_json::to_string_pretty(file_cfg)
+        .unwrap_or_else(|e| serde_json::json!({"error": e.to_string()}).to_string())
 }
 
 /// Write DOT output for a FileCfg.
