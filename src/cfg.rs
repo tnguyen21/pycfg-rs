@@ -1347,6 +1347,98 @@ mod tests {
     }
 
     #[test]
+    fn test_local_except_does_not_create_abrupt_finally_path() {
+        let source = "def foo():\n    try:\n        raise ValueError()\n    except ValueError:\n        handle()\n    finally:\n        cleanup()\n";
+        let result = build_cfgs(source, "test.py", &CfgOptions::default());
+        let func = &result.functions[0];
+
+        let raise_block = func
+            .blocks
+            .iter()
+            .find(|b| b.statements.iter().any(|s| s.text == "raise ValueError()"))
+            .unwrap();
+        let handler_id = func
+            .blocks
+            .iter()
+            .find(|b| b.statements.iter().any(|s| s.text == "except ValueError:"))
+            .unwrap()
+            .id;
+        let finally_blocks: Vec<_> = func
+            .blocks
+            .iter()
+            .filter(|b| b.statements.iter().any(|s| s.text == "finally:"))
+            .collect();
+
+        assert_eq!(
+            finally_blocks.len(),
+            1,
+            "handled exceptions should only traverse the normal finally block once"
+        );
+        assert!(
+            raise_block
+                .successors
+                .iter()
+                .any(|e| e.target == handler_id && e.label == "raise")
+        );
+        assert!(!raise_block.successors.iter().any(|e| e.label == "finally"));
+    }
+
+    #[test]
+    fn test_return_in_try_except_finally_still_runs_finally() {
+        let source = "def foo():\n    try:\n        return 1\n    except ValueError:\n        handle()\n    finally:\n        cleanup()\n";
+        let result = build_cfgs(source, "test.py", &CfgOptions::default());
+        let func = &result.functions[0];
+        let return_block = func
+            .blocks
+            .iter()
+            .find(|b| b.statements.iter().any(|s| s.text == "return 1"))
+            .unwrap();
+
+        assert!(return_block.successors.iter().any(|e| e.label == "finally"));
+        assert!(!return_block.successors.iter().any(|e| e.label == "return"));
+    }
+
+    #[test]
+    fn test_pending_edges_are_local_handlers_precise() {
+        let frame = FinallyFrame {
+            finalbody: Vec::new(),
+            local_handler_targets: vec![2, 4],
+        };
+
+        assert!(CfgBuilder::pending_edges_are_local_handlers(
+            &[PendingEdge {
+                target: 2,
+                label: "raise",
+            }],
+            &frame,
+        ));
+        assert!(!CfgBuilder::pending_edges_are_local_handlers(
+            &[PendingEdge {
+                target: 2,
+                label: "return",
+            }],
+            &frame,
+        ));
+        assert!(!CfgBuilder::pending_edges_are_local_handlers(
+            &[PendingEdge {
+                target: 3,
+                label: "raise",
+            }],
+            &frame,
+        ));
+        assert!(!CfgBuilder::pending_edges_are_local_handlers(
+            &[PendingEdge {
+                target: 2,
+                label: "raise",
+            }],
+            &FinallyFrame {
+                finalbody: Vec::new(),
+                local_handler_targets: Vec::new(),
+            },
+        ));
+    }
+
+    #[test]
     fn test_break_in_try() {
         let source = "def foo():\n    for i in range(10):\n        try:\n            if i == 5:\n                break\n        except Exception:\n            pass\n    return 0\n";
         let result = build_cfgs(source, "test.py", &CfgOptions::default());
@@ -1881,6 +1973,14 @@ mod tests {
             "should have lines >= 4, got {:?}",
             lines
         );
+    }
+
+    #[test]
+    fn test_line_from_offset_precise() {
+        let source = "alpha\nbeta\ngamma\n";
+        assert_eq!(line_from_offset(source, TextSize::from(0)), 1);
+        assert_eq!(line_from_offset(source, TextSize::from(7)), 2);
+        assert_eq!(line_from_offset(source, TextSize::from(12)), 3);
     }
 
     #[test]

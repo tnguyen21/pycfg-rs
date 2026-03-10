@@ -585,6 +585,15 @@ fn test_json_report_output_stable_envelope() {
 }
 
 #[test]
+fn test_text_report_single_file_omits_header() {
+    let source = "def foo():\n    return 1\n";
+    let result = analyze_file_source(source);
+    let text = pycfg_rs::writer::write_text_report(&[result]);
+    assert!(!text.starts_with("# file:"));
+    assert!(!text.contains("\n# file:"));
+}
+
+#[test]
 fn test_dot_entry_exit_mrecord() {
     // Catches: entry/exit shape mutations (line 45)
     let source = "def foo():\n    return 1\n";
@@ -668,6 +677,39 @@ fn test_dot_report_multi_file_single_graph() {
     assert_eq!(dot.matches("digraph CFG {").count(), 1);
     assert!(dot.contains("subgraph cluster_file_0"));
     assert!(dot.contains("subgraph cluster_file_1"));
+}
+
+#[test]
+fn test_dot_report_single_file_omits_file_cluster() {
+    let foo = analyze_file_source("def foo():\n    return 1\n");
+    let dot = pycfg_rs::writer::write_dot_report(&[foo]);
+    assert!(dot.starts_with("digraph CFG {"));
+    assert!(!dot.contains("subgraph cluster_file_0"));
+}
+
+#[test]
+fn test_dot_report_escapes_special_labels() {
+    let source = "def foo():\n    value = \"a{b}|c\"\n    return value\n";
+    let weird_file = "odd\"name{file}|test.py";
+    let result = cfg::build_cfgs(source, weird_file, &CfgOptions::default());
+    let other = cfg::build_cfgs(
+        "def bar():\n    return 2\n",
+        "plain.py",
+        &CfgOptions::default(),
+    );
+    let dot = pycfg_rs::writer::write_dot_report(&[result, other]);
+    assert!(dot.contains("label=\"odd\\\"name\\{file\\}\\|test.py\""));
+    assert!(dot.contains("[L2] value = \\\"a\\{b\\}\\|c\\\""));
+}
+
+#[test]
+fn test_write_dot_function_writes_output() {
+    let result = analyze_file_source("def foo():\n    return 1\n");
+    let mut out = String::new();
+    pycfg_rs::writer::write_dot_function(&mut out, &result.functions[0]);
+    assert!(out.contains("subgraph cluster_foo"));
+    assert!(out.contains("foo_0"));
+    assert!(out.contains("foo_1"));
 }
 
 fn analyze_file_source(source: &str) -> cfg::FileCfg {
