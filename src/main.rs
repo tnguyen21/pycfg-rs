@@ -75,11 +75,7 @@ fn collect_python_files(path: &str) -> Vec<String> {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let log_level = match cli.verbose {
-        0 => log::LevelFilter::Warn,
-        1 => log::LevelFilter::Info,
-        _ => log::LevelFilter::Debug,
-    };
+    let log_level = log_level_for_verbosity(cli.verbose);
     env_logger::Builder::new().filter_level(log_level).init();
 
     let options = CfgOptions {
@@ -147,7 +143,19 @@ fn main() -> Result<()> {
 }
 
 fn write_output(stdout: &mut std::io::StdoutLock<'_>, content: &str) -> Result<()> {
-    if let Err(e) = stdout.write_all(content.as_bytes())
+    write_output_to(stdout, content)
+}
+
+fn log_level_for_verbosity(verbose: u8) -> log::LevelFilter {
+    match verbose {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        _ => log::LevelFilter::Debug,
+    }
+}
+
+fn write_output_to<W: Write>(writer: &mut W, content: &str) -> Result<()> {
+    if let Err(e) = writer.write_all(content.as_bytes())
         && e.kind() != std::io::ErrorKind::BrokenPipe
     {
         return Err(e.into());
@@ -158,6 +166,42 @@ fn write_output(stdout: &mut std::io::StdoutLock<'_>, content: &str) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io;
+
+    struct StubWriter {
+        error: Option<io::ErrorKind>,
+        writes: Vec<u8>,
+    }
+
+    impl StubWriter {
+        fn ok() -> Self {
+            Self {
+                error: None,
+                writes: Vec::new(),
+            }
+        }
+
+        fn failing(kind: io::ErrorKind) -> Self {
+            Self {
+                error: Some(kind),
+                writes: Vec::new(),
+            }
+        }
+    }
+
+    impl Write for StubWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            if let Some(kind) = self.error {
+                return Err(io::Error::from(kind));
+            }
+            self.writes.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
 
     #[test]
     fn test_parse_target_file_only() {
@@ -254,6 +298,37 @@ mod tests {
         assert!(
             files.is_empty(),
             "nonexistent non-.py file should not be included"
+        );
+    }
+
+    #[test]
+    fn test_log_level_for_verbosity() {
+        assert_eq!(log_level_for_verbosity(0), log::LevelFilter::Warn);
+        assert_eq!(log_level_for_verbosity(1), log::LevelFilter::Info);
+        assert_eq!(log_level_for_verbosity(2), log::LevelFilter::Debug);
+        assert_eq!(log_level_for_verbosity(9), log::LevelFilter::Debug);
+    }
+
+    #[test]
+    fn test_write_output_to_writes_content() {
+        let mut writer = StubWriter::ok();
+        write_output_to(&mut writer, "hello").unwrap();
+        assert_eq!(writer.writes, b"hello");
+    }
+
+    #[test]
+    fn test_write_output_to_ignores_broken_pipe() {
+        let mut writer = StubWriter::failing(io::ErrorKind::BrokenPipe);
+        write_output_to(&mut writer, "hello").unwrap();
+    }
+
+    #[test]
+    fn test_write_output_to_returns_other_errors() {
+        let mut writer = StubWriter::failing(io::ErrorKind::WriteZero);
+        let err = write_output_to(&mut writer, "hello").unwrap_err();
+        assert!(
+            err.to_string().contains("write zero"),
+            "unexpected error: {err}"
         );
     }
 }
