@@ -1,7 +1,9 @@
 use ruff_python_ast::{self as ast, Stmt};
 use ruff_text_size::Ranged;
 
-use super::{BasicBlock, CfgOptions, Edge, FunctionCfg, Metrics, Statement, source_map};
+use super::{
+    BasicBlock, BlockKind, CfgOptions, Edge, EdgeKind, FunctionCfg, Metrics, Statement, source_map,
+};
 
 pub(crate) struct CfgBuilder<'src> {
     source: &'src str,
@@ -36,18 +38,19 @@ impl<'src> CfgBuilder<'src> {
         }
     }
 
-    fn new_block(&mut self, label: &str) -> usize {
+    fn new_block(&mut self, label: BlockKind) -> usize {
         let id = self.blocks.len();
         self.blocks.push(BasicBlock {
             id,
-            label: label.to_string(),
+            label,
             statements: Vec::new(),
             successors: Vec::new(),
         });
         id
     }
 
-    fn add_edge(&mut self, from: usize, to: usize, label: &str) {
+    fn add_edge(&mut self, from: usize, to: usize, label: impl Into<EdgeKind>) {
+        let label = label.into();
         if self.blocks[from]
             .successors
             .iter()
@@ -55,13 +58,13 @@ impl<'src> CfgBuilder<'src> {
         {
             return;
         }
-        self.blocks[from].successors.push(Edge {
-            target: to,
-            label: label.to_string(),
-        });
+        self.blocks[from]
+            .successors
+            .push(Edge { target: to, label });
     }
 
-    fn remove_edge(&mut self, from: usize, to: usize, label: &str) {
+    fn remove_edge(&mut self, from: usize, to: usize, label: impl Into<EdgeKind>) {
+        let label = label.into();
         if let Some(index) = self.blocks[from]
             .successors
             .iter()
@@ -195,7 +198,7 @@ impl<'src> CfgBuilder<'src> {
                 return;
             }
 
-            let finally_block = self.new_block("body");
+            let finally_block = self.new_block(BlockKind::Body);
             let finally_line = self.offset_to_line(frame.finalbody[0].range().start());
             self.add_stmt(
                 finally_block,
@@ -221,8 +224,8 @@ impl<'src> CfgBuilder<'src> {
         let test_text = format!("if {}:", self.range_text(if_stmt.test.range()));
         self.add_stmt(current, line, &test_text);
 
-        let true_block = self.new_block("body");
-        let merge_block = self.new_block("body");
+        let true_block = self.new_block(BlockKind::Body);
+        let merge_block = self.new_block(BlockKind::Body);
 
         self.add_edge(current, true_block, "True");
 
@@ -234,14 +237,14 @@ impl<'src> CfgBuilder<'src> {
         let mut prev_false_from = current;
         for clause in &if_stmt.elif_else_clauses {
             if let Some(ref test) = clause.test {
-                let elif_test_block = self.new_block("body");
+                let elif_test_block = self.new_block(BlockKind::Body);
                 self.add_edge(prev_false_from, elif_test_block, "False");
 
                 let elif_line = self.offset_to_line(clause.range().start());
                 let elif_text = format!("elif {}:", self.range_text(test.range()));
                 self.add_stmt(elif_test_block, elif_line, &elif_text);
 
-                let elif_body_block = self.new_block("body");
+                let elif_body_block = self.new_block(BlockKind::Body);
                 self.add_edge(elif_test_block, elif_body_block, "True");
 
                 let elif_end = self.build_stmts(&clause.body, elif_body_block, exit);
@@ -251,7 +254,7 @@ impl<'src> CfgBuilder<'src> {
 
                 prev_false_from = elif_test_block;
             } else {
-                let else_block = self.new_block("body");
+                let else_block = self.new_block(BlockKind::Body);
                 self.add_edge(prev_false_from, else_block, "False");
 
                 let else_end = self.build_stmts(&clause.body, else_block, exit);
@@ -285,8 +288,8 @@ impl<'src> CfgBuilder<'src> {
         self.add_stmt(current, line, &iter_text);
 
         let header = current;
-        let body_block = self.new_block("body");
-        let exit_block = self.new_block("body");
+        let body_block = self.new_block(BlockKind::Body);
+        let exit_block = self.new_block(BlockKind::Body);
 
         self.add_edge(header, body_block, "loop-body");
         self.add_edge(header, exit_block, "loop-exit");
@@ -300,7 +303,7 @@ impl<'src> CfgBuilder<'src> {
         }
 
         if !for_stmt.orelse.is_empty() {
-            let else_block = self.new_block("body");
+            let else_block = self.new_block(BlockKind::Body);
             self.remove_edge(header, exit_block, "loop-exit");
             self.add_edge(header, else_block, "loop-exit");
 
@@ -324,8 +327,8 @@ impl<'src> CfgBuilder<'src> {
         self.add_stmt(current, line, &test_text);
 
         let header = current;
-        let body_block = self.new_block("body");
-        let exit_block = self.new_block("body");
+        let body_block = self.new_block(BlockKind::Body);
+        let exit_block = self.new_block(BlockKind::Body);
 
         self.add_edge(header, body_block, "True");
         self.add_edge(header, exit_block, "False");
@@ -339,7 +342,7 @@ impl<'src> CfgBuilder<'src> {
         }
 
         if !while_stmt.orelse.is_empty() {
-            let else_block = self.new_block("body");
+            let else_block = self.new_block(BlockKind::Body);
             self.remove_edge(header, exit_block, "False");
             self.add_edge(header, else_block, "False");
 
@@ -380,11 +383,11 @@ impl<'src> CfgBuilder<'src> {
         let line = self.offset_to_line(try_stmt.range().start());
         self.add_stmt(current, line, "try:");
 
-        let merge_block = self.new_block("body");
+        let merge_block = self.new_block(BlockKind::Body);
 
         let mut handler_blocks = Vec::new();
         for handler in &try_stmt.handlers {
-            let handler_block = self.new_block("body");
+            let handler_block = self.new_block(BlockKind::Body);
             let ast::ExceptHandler::ExceptHandler(h) = handler;
             let handler_line = self.offset_to_line(h.range().start());
             let handler_text = if let Some(ref ty) = h.type_ {
@@ -420,7 +423,7 @@ impl<'src> CfgBuilder<'src> {
         };
         self.except_stack.push(exc_targets);
 
-        let try_body_block = self.new_block("body");
+        let try_body_block = self.new_block(BlockKind::Body);
         self.add_edge(current, try_body_block, "try");
         let try_end = self.build_stmts(&try_stmt.body, try_body_block, exit);
 
@@ -434,7 +437,7 @@ impl<'src> CfgBuilder<'src> {
         }
 
         if !try_stmt.orelse.is_empty() {
-            let else_block = self.new_block("body");
+            let else_block = self.new_block(BlockKind::Body);
             let else_line = self.offset_to_line(try_stmt.orelse[0].range().start());
             self.add_stmt(else_block, else_line.saturating_sub(1).max(1), "else:");
             if let Some(te) = try_end {
@@ -458,7 +461,7 @@ impl<'src> CfgBuilder<'src> {
         }
 
         if !try_stmt.finalbody.is_empty() {
-            let finally_block = self.new_block("body");
+            let finally_block = self.new_block(BlockKind::Body);
             let finally_line = self.offset_to_line(try_stmt.finalbody[0].range().start());
             self.add_stmt(
                 finally_block,
@@ -466,7 +469,7 @@ impl<'src> CfgBuilder<'src> {
                 "finally:",
             );
 
-            let new_merge = self.new_block("body");
+            let new_merge = self.new_block(BlockKind::Body);
             self.add_edge(merge_block, finally_block, "finally");
             let finally_end = self.build_stmts(&try_stmt.finalbody, finally_block, exit);
             if let Some(fe) = finally_end {
@@ -518,13 +521,13 @@ impl<'src> CfgBuilder<'src> {
         let subject_text = format!("match {}:", self.range_text(match_stmt.subject.range()));
         self.add_stmt(current, line, &subject_text);
 
-        let merge_block = self.new_block("body");
+        let merge_block = self.new_block(BlockKind::Body);
 
         for case in &match_stmt.cases {
-            let case_block = self.new_block("body");
+            let case_block = self.new_block(BlockKind::Body);
             let pattern_text = self.range_text(case.pattern.range());
             let label = format!("case {}", pattern_text);
-            self.add_edge(current, case_block, &label);
+            self.add_edge(current, case_block, label.as_str());
 
             let case_end = self.build_stmts(&case.body, case_block, exit);
             if let Some(ce) = case_end {
@@ -621,8 +624,8 @@ pub(crate) fn build_single_cfg(
 ) -> FunctionCfg {
     let mut builder = CfgBuilder::new(source, options.explicit_exceptions);
 
-    let entry = builder.new_block("entry");
-    let exit = builder.new_block("exit");
+    let entry = builder.new_block(BlockKind::Entry);
+    let exit = builder.new_block(BlockKind::Exit);
 
     let last = builder.build_stmts(body, entry, exit);
     if let Some(last_block) = last {

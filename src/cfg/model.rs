@@ -1,10 +1,170 @@
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::fmt;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BlockKind {
+    Entry,
+    Exit,
+    Body,
+}
+
+impl BlockKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BlockKind::Entry => "entry",
+            BlockKind::Exit => "exit",
+            BlockKind::Body => "body",
+        }
+    }
+}
+
+impl From<&str> for BlockKind {
+    fn from(value: &str) -> Self {
+        match value {
+            "entry" => BlockKind::Entry,
+            "exit" => BlockKind::Exit,
+            "body" => BlockKind::Body,
+            other => panic!("unsupported block kind: {other}"),
+        }
+    }
+}
+
+impl Serialize for BlockKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl fmt::Display for BlockKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl PartialEq<&str> for BlockKind {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str() == *other
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum EdgeKind {
+    True,
+    False,
+    Return,
+    Exception,
+    Raise,
+    AssertFail,
+    Break,
+    Continue,
+    LoopBody,
+    LoopExit,
+    LoopBack,
+    Fallthrough,
+    Try,
+    TryElse,
+    Finally,
+    Case(String),
+    Other(String),
+}
+
+impl EdgeKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            EdgeKind::True => "True",
+            EdgeKind::False => "False",
+            EdgeKind::Return => "return",
+            EdgeKind::Exception => "exception",
+            EdgeKind::Raise => "raise",
+            EdgeKind::AssertFail => "assert-fail",
+            EdgeKind::Break => "break",
+            EdgeKind::Continue => "continue",
+            EdgeKind::LoopBody => "loop-body",
+            EdgeKind::LoopExit => "loop-exit",
+            EdgeKind::LoopBack => "loop-back",
+            EdgeKind::Fallthrough => "fallthrough",
+            EdgeKind::Try => "try",
+            EdgeKind::TryElse => "try-else",
+            EdgeKind::Finally => "finally",
+            EdgeKind::Case(label) | EdgeKind::Other(label) => label.as_str(),
+        }
+    }
+
+    pub fn starts_with(&self, prefix: &str) -> bool {
+        self.as_str().starts_with(prefix)
+    }
+
+    pub fn dot_color(&self) -> &'static str {
+        match self {
+            EdgeKind::True => "green",
+            EdgeKind::False => "red",
+            EdgeKind::Return => "blue",
+            EdgeKind::Exception | EdgeKind::Raise | EdgeKind::AssertFail => "orange",
+            EdgeKind::Break => "purple",
+            EdgeKind::Continue => "cyan",
+            _ => "black",
+        }
+    }
+}
+
+impl From<&str> for EdgeKind {
+    fn from(value: &str) -> Self {
+        match value {
+            "True" => EdgeKind::True,
+            "False" => EdgeKind::False,
+            "return" => EdgeKind::Return,
+            "exception" => EdgeKind::Exception,
+            "raise" => EdgeKind::Raise,
+            "assert-fail" => EdgeKind::AssertFail,
+            "break" => EdgeKind::Break,
+            "continue" => EdgeKind::Continue,
+            "loop-body" => EdgeKind::LoopBody,
+            "loop-exit" => EdgeKind::LoopExit,
+            "loop-back" => EdgeKind::LoopBack,
+            "fallthrough" => EdgeKind::Fallthrough,
+            "try" => EdgeKind::Try,
+            "try-else" => EdgeKind::TryElse,
+            "finally" => EdgeKind::Finally,
+            label if label.starts_with("case ") => EdgeKind::Case(label.to_string()),
+            label => EdgeKind::Other(label.to_string()),
+        }
+    }
+}
+
+impl From<String> for EdgeKind {
+    fn from(value: String) -> Self {
+        EdgeKind::from(value.as_str())
+    }
+}
+
+impl Serialize for EdgeKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl fmt::Display for EdgeKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl PartialEq<&str> for EdgeKind {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str() == *other
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Edge {
     pub target: usize,
-    pub label: String,
+    pub label: EdgeKind,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -16,7 +176,7 @@ pub struct Statement {
 #[derive(Debug, Clone, Serialize)]
 pub struct BasicBlock {
     pub id: usize,
-    pub label: String,
+    pub label: BlockKind,
     pub statements: Vec<Statement>,
     pub successors: Vec<Edge>,
 }

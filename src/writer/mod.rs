@@ -175,7 +175,7 @@ fn write_dot_function_with_prefix(
                 "{indent}    {prefix}_{src} -> {prefix}_{tgt} [label=\"{label}\", color={color}];",
                 src = block.id,
                 tgt = edge.target,
-                label = escape_dot(&edge.label),
+                label = escape_dot(edge.label.as_str()),
             )
             .unwrap();
         }

@@ -6,7 +6,7 @@ mod model;
 mod source_map;
 mod symbols;
 
-pub use model::{BasicBlock, Edge, FileCfg, FunctionCfg, Metrics, Statement};
+pub use model::{BasicBlock, BlockKind, Edge, EdgeKind, FileCfg, FunctionCfg, Metrics, Statement};
 
 use builder::build_single_cfg;
 use symbols::visit_functions;
