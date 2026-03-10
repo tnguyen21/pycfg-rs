@@ -162,6 +162,16 @@ impl<'src> CfgBuilder<'src> {
         });
     }
 
+    fn remove_edge(&mut self, from: usize, to: usize, label: &str) {
+        if let Some(index) = self.blocks[from]
+            .successors
+            .iter()
+            .position(|e| e.target == to && e.label == label)
+        {
+            self.blocks[from].successors.remove(index);
+        }
+    }
+
     fn add_stmt(&mut self, block: usize, line: usize, text: &str) {
         self.blocks[block].statements.push(Statement {
             line,
@@ -390,9 +400,7 @@ impl<'src> CfgBuilder<'src> {
 
         if !for_stmt.orelse.is_empty() {
             let else_block = self.new_block("body");
-            self.blocks[header]
-                .successors
-                .retain(|e| !(e.target == exit_block && e.label == "loop-exit"));
+            self.remove_edge(header, exit_block, "loop-exit");
             self.add_edge(header, else_block, "loop-exit");
 
             let else_end = self.build_stmts(&for_stmt.orelse, else_block, exit);
@@ -431,9 +439,7 @@ impl<'src> CfgBuilder<'src> {
 
         if !while_stmt.orelse.is_empty() {
             let else_block = self.new_block("body");
-            self.blocks[header]
-                .successors
-                .retain(|e| !(e.target == exit_block && e.label == "False"));
+            self.remove_edge(header, exit_block, "False");
             self.add_edge(header, else_block, "False");
 
             let else_end = self.build_stmts(&while_stmt.orelse, else_block, exit);
@@ -495,6 +501,7 @@ impl<'src> CfgBuilder<'src> {
         }
 
         let finalbody = try_stmt.finalbody.clone();
+        let finally_depth = self.finally_stack.len();
         if !finalbody.is_empty() {
             self.finally_stack.push(FinallyFrame {
                 finalbody,
@@ -517,10 +524,7 @@ impl<'src> CfgBuilder<'src> {
         let try_end = self.build_stmts(&try_stmt.body, try_body_block, exit);
 
         self.except_stack.pop();
-
-        if !try_stmt.finalbody.is_empty() {
-            self.finally_stack.pop();
-        }
+        self.finally_stack.truncate(finally_depth);
 
         if !self.explicit_exceptions {
             for &handler_block in &handler_blocks {
@@ -1396,6 +1400,38 @@ mod tests {
 
         assert!(return_block.successors.iter().any(|e| e.label == "finally"));
         assert!(!return_block.successors.iter().any(|e| e.label == "return"));
+    }
+
+    #[test]
+    fn test_raise_after_try_finally_does_not_reenter_finally() {
+        let source =
+            "def foo():\n    try:\n        work()\n    finally:\n        cleanup()\n    raise ValueError()\n";
+        let result = build_cfgs(source, "test.py", &CfgOptions::default());
+        let func = &result.functions[0];
+        let raise_block = func
+            .blocks
+            .iter()
+            .find(|b| b.statements.iter().any(|s| s.text == "raise ValueError()"))
+            .expect("should have raise block after try/finally");
+        let finally_blocks: Vec<_> = func
+            .blocks
+            .iter()
+            .filter(|b| b.statements.iter().any(|s| s.text == "finally:"))
+            .collect();
+
+        assert_eq!(
+            finally_blocks.len(),
+            1,
+            "completed try/finally should not leak a second finally path into later raises"
+        );
+        assert!(
+            raise_block.successors.iter().any(|e| e.label == "raise"),
+            "raise after completed try/finally should still raise normally"
+        );
+        assert!(
+            !raise_block.successors.iter().any(|e| e.label == "finally"),
+            "raise after completed try/finally should not re-enter the prior finally block"
+        );
     }
 
     #[test]
