@@ -21,7 +21,7 @@ pycfg src/handler.py
 # Analyze a specific function
 pycfg src/handler.py::process_request
 
-# Analyze a class method
+# Analyze a class method using its exact qualified name
 pycfg src/handler.py::MyClass.handle
 
 # Analyze all Python files in a directory
@@ -36,6 +36,9 @@ pycfg --format dot src/handler.py | dot -Tsvg -o cfg.svg
 # Enable per-statement exception edges inside try blocks
 pycfg --explicit-exceptions src/handler.py
 ```
+
+Function targets are exact. Methods must be addressed as `ClassName.method_name`, not by leaf name alone.
+Only `.py` files and directories are accepted as inputs. Files with parse errors are skipped with a warning instead of aborting the entire run.
 
 ## Output Formats
 
@@ -141,7 +144,9 @@ Each function's CFG includes:
 ## Testing
 
 ```bash
+cargo fmt --check                     # Verify formatting
 cargo test                           # Run all tests
+cargo clippy -- -D warnings          # Lint with warnings denied
 ./scripts/bootstrap-corpora.sh       # Clone test corpora (requests, flask, rich)
 cargo test -- --nocapture            # See corpus test output
 ```

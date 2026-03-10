@@ -6,6 +6,7 @@ Binary name: `pycfg`
 
 ## Verification (all phases)
 
+- `cargo fmt --check`
 - `cargo build`
 - `cargo test`
 - `cargo clippy -- -D warnings`
@@ -20,7 +21,7 @@ Binary name: `pycfg`
 - Dependencies: `ruff_python_parser`, `ruff_python_ast`, `ruff_text_size` (git deps from astral-sh/ruff, same as pycallgraph-rs), `clap 4` (derive), `anyhow`, `walkdir`, `serde + serde_json` (for later JSON output)
 - CLI accepts positional args: `pycfg <file.py>` (all functions) or `pycfg <file.py::function_name>` (single function). For methods: `file.py::ClassName.method_name`
 - `--format` flag with values: `text` (default), `json`, `dot`
-- Parse Python files using `ruff_python_parser::parse_unchecked` (same pattern as pycg)
+- Parse Python files using Ruff's parser and surface syntax diagnostics to callers
 - Build CFG as basic blocks for these core constructs:
   - `if`/`elif`/`else` — true/false branch edges
   - `for`/`while` — loop body, loop exit, `else` clause
@@ -156,8 +157,9 @@ Binary name: `pycfg`
   - Pipeable to `dot -Tsvg -o graph.svg`
 - CLI enhancements:
   - Accept directories as input (recursively find `.py` files, same as pycg)
-  - `--root` flag for module name resolution (display `pkg.module::func` instead of `src/pkg/module.py::func`)
   - `-v` / `-vv` for log verbosity (using `log` + `env_logger`, same as pycg)
+  - Require exact function targets (`Class.method`, not leaf-name fallback)
+  - Reject non-`.py` file inputs
   - Graceful handling of parse errors: warn and skip unparseable files, don't crash
   - `--version` flag
 - Serialize/deserialize tests for JSON output

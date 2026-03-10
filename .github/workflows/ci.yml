@@ -27,8 +27,14 @@ jobs:
       - name: Build
         run: cargo build
 
+      - name: Format
+        run: cargo fmt --check
+
       - name: Test
         run: cargo test
 
       - name: Clippy
         run: cargo clippy -- -D warnings
+
+      - name: Release Smoke Test
+        run: cargo run --release -- --format json tests/test_code/basic_if.py > /dev/null
