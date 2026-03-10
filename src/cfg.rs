@@ -106,7 +106,20 @@ struct CfgBuilder<'src> {
     blocks: Vec<BasicBlock>,
     loop_stack: Vec<(usize, usize)>,
     except_stack: Vec<Vec<usize>>,
+    finally_stack: Vec<FinallyFrame>,
     explicit_exceptions: bool,
+}
+
+#[derive(Clone)]
+struct PendingEdge {
+    target: usize,
+    label: &'static str,
+}
+
+#[derive(Clone)]
+struct FinallyFrame {
+    finalbody: Vec<Stmt>,
+    local_handler_targets: Vec<usize>,
 }
 
 impl<'src> CfgBuilder<'src> {
@@ -116,6 +129,7 @@ impl<'src> CfgBuilder<'src> {
             blocks: Vec::new(),
             loop_stack: Vec::new(),
             except_stack: Vec::new(),
+            finally_stack: Vec::new(),
             explicit_exceptions,
         }
     }
@@ -181,7 +195,14 @@ impl<'src> CfgBuilder<'src> {
                 let line = self.offset_to_line(stmt.range().start());
                 self.add_stmt(current, line, "break");
                 if let Some(&(_, loop_exit)) = self.loop_stack.last() {
-                    self.add_edge(current, loop_exit, "break");
+                    self.emit_pending_edges(
+                        current,
+                        &[PendingEdge {
+                            target: loop_exit,
+                            label: "break",
+                        }],
+                        exit,
+                    );
                 }
                 None
             }
@@ -189,7 +210,14 @@ impl<'src> CfgBuilder<'src> {
                 let line = self.offset_to_line(stmt.range().start());
                 self.add_stmt(current, line, "continue");
                 if let Some(&(loop_header, _)) = self.loop_stack.last() {
-                    self.add_edge(current, loop_header, "continue");
+                    self.emit_pending_edges(
+                        current,
+                        &[PendingEdge {
+                            target: loop_header,
+                            label: "continue",
+                        }],
+                        exit,
+                    );
                 }
                 None
             }
@@ -209,18 +237,69 @@ impl<'src> CfgBuilder<'src> {
                 let text = self.range_text(stmt.range());
                 self.add_stmt(current, line, &text);
                 if self.explicit_exceptions {
-                    let handlers: Vec<usize> = self
+                    let handlers: Vec<PendingEdge> = self
                         .except_stack
                         .last()
                         .cloned()
-                        .unwrap_or_default();
-                    for handler_block in handlers {
-                        self.add_edge(current, handler_block, "exception");
-                    }
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(|target| PendingEdge {
+                            target,
+                            label: "exception",
+                        })
+                        .collect();
+                    self.emit_pending_edges(current, &handlers, exit);
                 }
                 Some(current)
             }
         }
+    }
+
+    fn add_pending_edges(&mut self, from: usize, pending: &[PendingEdge]) {
+        for edge in pending {
+            self.add_edge(from, edge.target, edge.label);
+        }
+    }
+
+    fn pending_edges_are_local_handlers(pending: &[PendingEdge], frame: &FinallyFrame) -> bool {
+        !frame.local_handler_targets.is_empty()
+            && pending.iter().all(|edge| {
+                matches!(edge.label, "exception" | "raise" | "assert-fail")
+                    && frame.local_handler_targets.contains(&edge.target)
+            })
+    }
+
+    fn emit_pending_edges(&mut self, from: usize, pending: &[PendingEdge], exit: usize) {
+        if pending.is_empty() {
+            return;
+        }
+
+        if let Some(frame) = self.finally_stack.pop() {
+            if Self::pending_edges_are_local_handlers(pending, &frame) {
+                self.finally_stack.push(frame);
+                self.add_pending_edges(from, pending);
+                return;
+            }
+
+            let finally_block = self.new_block("body");
+            let finally_line = self.offset_to_line(frame.finalbody[0].range().start());
+            self.add_stmt(
+                finally_block,
+                finally_line.saturating_sub(1).max(1),
+                "finally:",
+            );
+            self.add_edge(from, finally_block, "finally");
+
+            let finally_end = self.build_stmts(&frame.finalbody, finally_block, exit);
+            if let Some(fe) = finally_end {
+                self.emit_pending_edges(fe, pending, exit);
+            }
+
+            self.finally_stack.push(frame);
+            return;
+        }
+
+        self.add_pending_edges(from, pending);
     }
 
     fn build_if(&mut self, if_stmt: &ast::StmtIf, current: usize, exit: usize) -> Option<usize> {
@@ -362,7 +441,14 @@ impl<'src> CfgBuilder<'src> {
             "return".to_string()
         };
         self.add_stmt(current, line, &text);
-        self.add_edge(current, exit, "return");
+        self.emit_pending_edges(
+            current,
+            &[PendingEdge {
+                target: exit,
+                label: "return",
+            }],
+            exit,
+        );
         None
     }
 
@@ -391,21 +477,32 @@ impl<'src> CfgBuilder<'src> {
             handler_blocks.push(handler_block);
         }
 
-        if self.explicit_exceptions {
-            let exc_targets = if handler_blocks.is_empty() {
-                vec![exit]
-            } else {
-                handler_blocks.clone()
-            };
-            self.except_stack.push(exc_targets);
+        let finalbody = try_stmt.finalbody.clone();
+        if !finalbody.is_empty() {
+            self.finally_stack.push(FinallyFrame {
+                finalbody,
+                local_handler_targets: handler_blocks.clone(),
+            });
         }
+
+        let exc_targets = if handler_blocks.is_empty() {
+            self.except_stack
+                .last()
+                .cloned()
+                .unwrap_or_else(|| vec![exit])
+        } else {
+            handler_blocks.clone()
+        };
+        self.except_stack.push(exc_targets);
 
         let try_body_block = self.new_block("body");
         self.add_edge(current, try_body_block, "try");
         let try_end = self.build_stmts(&try_stmt.body, try_body_block, exit);
 
-        if self.explicit_exceptions {
-            self.except_stack.pop();
+        self.except_stack.pop();
+
+        if !try_stmt.finalbody.is_empty() {
+            self.finally_stack.pop();
         }
 
         if !self.explicit_exceptions {
@@ -441,7 +538,11 @@ impl<'src> CfgBuilder<'src> {
         if !try_stmt.finalbody.is_empty() {
             let finally_block = self.new_block("body");
             let finally_line = self.offset_to_line(try_stmt.finalbody[0].range().start());
-            self.add_stmt(finally_block, finally_line.saturating_sub(1).max(1), "finally:");
+            self.add_stmt(
+                finally_block,
+                finally_line.saturating_sub(1).max(1),
+                "finally:",
+            );
 
             let new_merge = self.new_block("body");
             self.add_edge(merge_block, finally_block, "finally");
@@ -507,29 +608,64 @@ impl<'src> CfgBuilder<'src> {
         };
         self.add_stmt(current, line, &text);
 
-        let handlers: Vec<usize> = self.except_stack.last().cloned().unwrap_or_default();
+        let handlers: Vec<PendingEdge> = self
+            .except_stack
+            .last()
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|target| PendingEdge {
+                target,
+                label: "raise",
+            })
+            .collect();
         if handlers.is_empty() {
-            self.add_edge(current, exit, "raise");
+            self.emit_pending_edges(
+                current,
+                &[PendingEdge {
+                    target: exit,
+                    label: "raise",
+                }],
+                exit,
+            );
         } else {
-            for handler_block in handlers {
-                self.add_edge(current, handler_block, "raise");
-            }
+            self.emit_pending_edges(current, &handlers, exit);
         }
         None
     }
 
-    fn build_assert(&mut self, assert_stmt: &ast::StmtAssert, current: usize, exit: usize) -> Option<usize> {
+    fn build_assert(
+        &mut self,
+        assert_stmt: &ast::StmtAssert,
+        current: usize,
+        exit: usize,
+    ) -> Option<usize> {
         let line = self.offset_to_line(assert_stmt.range().start());
         let text = format!("assert {}", self.range_text(assert_stmt.test.range()));
         self.add_stmt(current, line, &text);
 
-        let handlers: Vec<usize> = self.except_stack.last().cloned().unwrap_or_default();
+        let handlers: Vec<PendingEdge> = self
+            .except_stack
+            .last()
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|target| PendingEdge {
+                target,
+                label: "assert-fail",
+            })
+            .collect();
         if handlers.is_empty() {
-            self.add_edge(current, exit, "assert-fail");
+            self.emit_pending_edges(
+                current,
+                &[PendingEdge {
+                    target: exit,
+                    label: "assert-fail",
+                }],
+                exit,
+            );
         } else {
-            for handler_block in handlers {
-                self.add_edge(current, handler_block, "assert-fail");
-            }
+            self.emit_pending_edges(current, &handlers, exit);
         }
         Some(current)
     }
@@ -1133,6 +1269,72 @@ mod tests {
         assert!(has_finally, "should have finally edge");
         assert!(has_try_else, "should have try-else edge");
         assert!(has_exception, "should have exception edge");
+    }
+
+    #[test]
+    fn test_return_in_try_finally_runs_finally() {
+        let source = "def foo(x):\n    try:\n        if x:\n            return 1\n    finally:\n        cleanup()\n    return 0\n";
+        let result = build_cfgs(source, "test.py", &CfgOptions::default());
+        let func = &result.functions[0];
+        let exit_id = func.blocks.iter().find(|b| b.label == "exit").unwrap().id;
+        let finally_blocks: Vec<_> = func
+            .blocks
+            .iter()
+            .filter(|b| b.statements.iter().any(|s| s.text == "finally:"))
+            .collect();
+        assert!(
+            finally_blocks.len() >= 2,
+            "expected normal and abrupt finally paths, got {}",
+            finally_blocks.len()
+        );
+        assert!(finally_blocks.iter().any(|block| {
+            block
+                .successors
+                .iter()
+                .any(|edge| edge.target == exit_id && edge.label == "return")
+        }));
+    }
+
+    #[test]
+    fn test_break_in_try_finally_runs_finally() {
+        let source = "def foo():\n    for i in range(10):\n        try:\n            break\n        finally:\n            cleanup()\n    return 0\n";
+        let result = build_cfgs(source, "test.py", &CfgOptions::default());
+        let func = &result.functions[0];
+        assert!(func.blocks.iter().any(|block| {
+            block.statements.iter().any(|s| s.text == "finally:")
+                && block.successors.iter().any(|edge| edge.label == "break")
+        }));
+    }
+
+    #[test]
+    fn test_continue_in_try_finally_runs_finally() {
+        let source = "def foo():\n    for i in range(3):\n        try:\n            continue\n        finally:\n            cleanup()\n    return 0\n";
+        let result = build_cfgs(source, "test.py", &CfgOptions::default());
+        let func = &result.functions[0];
+        assert!(func.blocks.iter().any(|block| {
+            block.statements.iter().any(|s| s.text == "finally:")
+                && block.successors.iter().any(|edge| edge.label == "continue")
+        }));
+    }
+
+    #[test]
+    fn test_raise_in_try_finally_runs_finally_before_outer_handler() {
+        let source = "def foo():\n    try:\n        try:\n            raise ValueError()\n        finally:\n            cleanup()\n    except ValueError:\n        handle()\n";
+        let result = build_cfgs(source, "test.py", &CfgOptions::default());
+        let func = &result.functions[0];
+        let outer_handler = func
+            .blocks
+            .iter()
+            .find(|b| b.statements.iter().any(|s| s.text == "except ValueError:"))
+            .unwrap()
+            .id;
+        assert!(func.blocks.iter().any(|block| {
+            block.statements.iter().any(|s| s.text == "finally:")
+                && block
+                    .successors
+                    .iter()
+                    .any(|edge| edge.target == outer_handler && edge.label == "raise")
+        }));
     }
 
     #[test]
