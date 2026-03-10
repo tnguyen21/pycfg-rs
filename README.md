@@ -65,35 +65,41 @@ def check_sign:
   # blocks=7 edges=8 branches=2 cyclomatic_complexity=3
 ```
 
+When analyzing multiple files, text output is grouped under `# file: ...` headers.
+
 ### JSON
 
-Graph-native format with successors inline per block:
+Stable envelope with file results under `files`:
 
 ```json
 {
-  "file": "src/handler.py",
-  "functions": [
+  "files": [
     {
-      "name": "check_sign",
-      "line": 1,
-      "blocks": [
+      "file": "src/handler.py",
+      "functions": [
         {
-          "id": 0,
-          "label": "entry",
-          "statements": [
-            {"line": 2, "text": "if x > 0:"}
+          "name": "check_sign",
+          "line": 1,
+          "blocks": [
+            {
+              "id": 0,
+              "label": "entry",
+              "statements": [
+                {"line": 2, "text": "if x > 0:"}
+              ],
+              "successors": [
+                {"target": 2, "label": "True"},
+                {"target": 4, "label": "False"}
+              ]
+            }
           ],
-          "successors": [
-            {"target": 2, "label": "True"},
-            {"target": 4, "label": "False"}
-          ]
+          "metrics": {
+            "cyclomatic_complexity": 3,
+            "blocks": 7,
+            "edges": 8,
+            "branches": 2
+          }
         }
-      ],
-      "metrics": {
-        "cyclomatic_complexity": 3,
-        "blocks": 7,
-        "edges": 8,
-        "branches": 2
       }
     }
   ]
@@ -102,7 +108,7 @@ Graph-native format with successors inline per block:
 
 ### DOT
 
-GraphViz DOT format. Entry/exit blocks use `Mrecord` shape, edges are color-coded:
+GraphViz DOT format. Directory and multi-file runs emit one valid DOT document with per-file clusters. Entry/exit blocks use `Mrecord` shape, edges are color-coded:
 - Green: True branch
 - Red: False branch
 - Blue: return
@@ -139,6 +145,8 @@ cargo test                           # Run all tests
 ./scripts/bootstrap-corpora.sh       # Clone test corpora (requests, flask, rich)
 cargo test -- --nocapture            # See corpus test output
 ```
+
+Mutation testing is part of the quality bar for this project, but the current suite still has surviving mutants around CLI/reporting boundaries and some `try`/`finally` edge conditions. Tightening those targeted tests is ongoing follow-up work.
 
 ## Benchmarks
 

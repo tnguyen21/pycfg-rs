@@ -29,7 +29,8 @@ fn test_loops_fixture() {
 #[test]
 fn test_loops_targeting() {
     let source = std::fs::read_to_string("tests/test_code/loops.py").unwrap();
-    let result = cfg::build_cfg_for_function(&source, "loops.py", "my_func", &CfgOptions::default());
+    let result =
+        cfg::build_cfg_for_function(&source, "loops.py", "my_func", &CfgOptions::default());
     assert!(result.is_some());
     let file_cfg = result.unwrap();
     assert_eq!(file_cfg.functions.len(), 1);
@@ -105,13 +106,26 @@ fn test_text_output_format() {
 fn test_nested_loops_fixture() {
     let result = analyze_file("tests/test_code/nested_loops.py");
     let funcs: Vec<&str> = result.functions.iter().map(|f| f.name.as_str()).collect();
-    assert!(funcs.contains(&"nested_for_while"), "missing nested_for_while");
-    assert!(funcs.contains(&"nested_while_while"), "missing nested_while_while");
+    assert!(
+        funcs.contains(&"nested_for_while"),
+        "missing nested_for_while"
+    );
+    assert!(
+        funcs.contains(&"nested_while_while"),
+        "missing nested_while_while"
+    );
     assert!(funcs.contains(&"triple_nested"), "missing triple_nested");
-    assert!(funcs.contains(&"break_outer_via_flag"), "missing break_outer_via_flag");
+    assert!(
+        funcs.contains(&"break_outer_via_flag"),
+        "missing break_outer_via_flag"
+    );
 
     // nested_for_while should have break and continue edges
-    let func = result.functions.iter().find(|f| f.name == "nested_for_while").unwrap();
+    let func = result
+        .functions
+        .iter()
+        .find(|f| f.name == "nested_for_while")
+        .unwrap();
     let edge_labels: Vec<&str> = func
         .blocks
         .iter()
@@ -127,21 +141,39 @@ fn test_loop_else_fixture() {
     let result = analyze_file("tests/test_code/loop_else.py");
 
     // for_else_no_break: else clause should exist
-    let func = result.functions.iter().find(|f| f.name == "for_else_no_break").unwrap();
-    assert!(func.blocks.len() >= 4, "for-else needs extra block for else body");
+    let func = result
+        .functions
+        .iter()
+        .find(|f| f.name == "for_else_no_break")
+        .unwrap();
+    assert!(
+        func.blocks.len() >= 4,
+        "for-else needs extra block for else body"
+    );
 
     // while_else: should have False edge
-    let func = result.functions.iter().find(|f| f.name == "while_else").unwrap();
+    let func = result
+        .functions
+        .iter()
+        .find(|f| f.name == "while_else")
+        .unwrap();
     let edge_labels: Vec<&str> = func
         .blocks
         .iter()
         .flat_map(|b| &b.successors)
         .map(|e| e.label.as_str())
         .collect();
-    assert!(edge_labels.contains(&"loop-back"), "while-else should have loop-back");
+    assert!(
+        edge_labels.contains(&"loop-back"),
+        "while-else should have loop-back"
+    );
 
     // for_else_with_break: break should skip else
-    let func = result.functions.iter().find(|f| f.name == "for_else_with_break").unwrap();
+    let func = result
+        .functions
+        .iter()
+        .find(|f| f.name == "for_else_with_break")
+        .unwrap();
     let has_break = func
         .blocks
         .iter()
@@ -155,14 +187,21 @@ fn test_try_complex_fixture() {
     let result = analyze_file("tests/test_code/try_complex.py");
 
     // multiple_excepts: 3 exception edges
-    let func = result.functions.iter().find(|f| f.name == "multiple_excepts").unwrap();
+    let func = result
+        .functions
+        .iter()
+        .find(|f| f.name == "multiple_excepts")
+        .unwrap();
     let exc_edges = func
         .blocks
         .iter()
         .flat_map(|b| &b.successors)
         .filter(|e| e.label == "exception")
         .count();
-    assert_eq!(exc_edges, 3, "multiple_excepts should have 3 exception edges");
+    assert_eq!(
+        exc_edges, 3,
+        "multiple_excepts should have 3 exception edges"
+    );
 
     // bare except should produce "except:" text
     let has_bare = func
@@ -172,7 +211,11 @@ fn test_try_complex_fixture() {
     assert!(has_bare);
 
     // nested_try: should have exception edges for both levels
-    let func = result.functions.iter().find(|f| f.name == "nested_try").unwrap();
+    let func = result
+        .functions
+        .iter()
+        .find(|f| f.name == "nested_try")
+        .unwrap();
     let exc_edges = func
         .blocks
         .iter()
@@ -182,7 +225,11 @@ fn test_try_complex_fixture() {
     assert!(exc_edges >= 2);
 
     // try_except_else: has try-else edge
-    let func = result.functions.iter().find(|f| f.name == "try_except_else").unwrap();
+    let func = result
+        .functions
+        .iter()
+        .find(|f| f.name == "try_except_else")
+        .unwrap();
     let has_try_else = func
         .blocks
         .iter()
@@ -207,7 +254,11 @@ fn test_try_complex_fixture() {
     assert!(all_labels.contains(&"exception"));
 
     // bare_raise: has raise edge
-    let func = result.functions.iter().find(|f| f.name == "bare_raise").unwrap();
+    let func = result
+        .functions
+        .iter()
+        .find(|f| f.name == "bare_raise")
+        .unwrap();
     let has_raise = func
         .blocks
         .iter()
@@ -220,7 +271,11 @@ fn test_try_complex_fixture() {
 fn test_async_constructs_fixture() {
     let result = analyze_file("tests/test_code/async_constructs.py");
 
-    let func = result.functions.iter().find(|f| f.name == "async_for_loop").unwrap();
+    let func = result
+        .functions
+        .iter()
+        .find(|f| f.name == "async_for_loop")
+        .unwrap();
     let has_async_for = func
         .blocks
         .iter()
@@ -232,10 +287,11 @@ fn test_async_constructs_fixture() {
         .iter()
         .find(|f| f.name == "async_with_statement")
         .unwrap();
-    let has_async_with = func
-        .blocks
-        .iter()
-        .any(|b| b.statements.iter().any(|s| s.text.starts_with("async with")));
+    let has_async_with = func.blocks.iter().any(|b| {
+        b.statements
+            .iter()
+            .any(|s| s.text.starts_with("async with"))
+    });
     assert!(has_async_with);
 }
 
@@ -287,7 +343,12 @@ fn test_generators_fixture() {
 fn test_straight_line_fixture() {
     let result = analyze_file("tests/test_code/straight_line.py");
 
-    for func_name in &["straight_line", "single_statement", "pass_only", "assignments_only"] {
+    for func_name in &[
+        "straight_line",
+        "single_statement",
+        "pass_only",
+        "assignments_only",
+    ] {
         let func = result
             .functions
             .iter()
@@ -329,7 +390,10 @@ fn test_complex_nesting_fixture() {
         .flat_map(|b| &b.successors)
         .filter(|e| e.target == exit_id && e.label == "return")
         .count();
-    assert!(return_edges >= 3, "deeply_nested_returns should have >= 3 return edges");
+    assert!(
+        return_edges >= 3,
+        "deeply_nested_returns should have >= 3 return edges"
+    );
 }
 
 #[test]
@@ -348,7 +412,10 @@ fn test_multiple_returns_fixture() {
         .flat_map(|b| &b.successors)
         .filter(|e| e.target == exit_id && e.label == "return")
         .count();
-    assert_eq!(return_edges, 4, "guard_clauses: 3 guard returns + 1 final return");
+    assert_eq!(
+        return_edges, 4,
+        "guard_clauses: 3 guard returns + 1 final return"
+    );
 
     let func = result
         .functions
@@ -440,7 +507,11 @@ fn test_all_fixtures_dot_output() {
     for fixture in &fixtures {
         let result = analyze_file(fixture);
         let dot = pycfg_rs::writer::write_dot(&result);
-        assert!(dot.starts_with("digraph CFG {"), "bad DOT start for {}", fixture);
+        assert!(
+            dot.starts_with("digraph CFG {"),
+            "bad DOT start for {}",
+            fixture
+        );
         assert!(dot.ends_with("}\n"), "bad DOT end for {}", fixture);
         assert!(dot.contains("->"), "no edges in DOT for {}", fixture);
     }
@@ -473,7 +544,10 @@ fn test_text_single_function_no_leading_blank() {
     let source = "def foo():\n    return 1\n";
     let result = analyze_file_source(source);
     let text = pycfg_rs::writer::write_text(&result);
-    assert!(!text.starts_with('\n'), "single function should not start with blank line");
+    assert!(
+        !text.starts_with('\n'),
+        "single function should not start with blank line"
+    );
 }
 
 #[test]
@@ -487,10 +561,27 @@ fn test_json_output_valid() {
     let funcs = parsed["functions"].as_array().unwrap();
     assert!(!funcs.is_empty());
     assert_eq!(funcs[0]["name"], "foo");
-    assert!(funcs[0]["metrics"]["cyclomatic_complexity"].as_u64().unwrap() >= 2);
+    assert!(
+        funcs[0]["metrics"]["cyclomatic_complexity"]
+            .as_u64()
+            .unwrap()
+            >= 2
+    );
     assert!(funcs[0]["blocks"].is_array());
     let blocks = funcs[0]["blocks"].as_array().unwrap();
     assert!(blocks.len() >= 2);
+}
+
+#[test]
+fn test_json_report_output_stable_envelope() {
+    let source = "def foo():\n    return 1\n";
+    let result = analyze_file_source(source);
+    let json = pycfg_rs::writer::write_json_report(&[result]);
+    let parsed: serde_json::Value = serde_json::from_str(&json).expect("JSON should be valid");
+    assert!(parsed["files"].is_array());
+    let files = parsed["files"].as_array().unwrap();
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0]["functions"][0]["name"], "foo");
 }
 
 #[test]
@@ -500,7 +591,10 @@ fn test_dot_entry_exit_mrecord() {
     let result = analyze_file_source(source);
     let dot = pycfg_rs::writer::write_dot(&result);
     // Entry and exit blocks should use Mrecord shape
-    assert!(dot.contains("shape=Mrecord"), "entry/exit blocks should use Mrecord shape");
+    assert!(
+        dot.contains("shape=Mrecord"),
+        "entry/exit blocks should use Mrecord shape"
+    );
 }
 
 #[test]
@@ -562,6 +656,20 @@ fn test_dot_exception_edge_color() {
     assert!(dot.contains("color=orange"), "raise edges should be orange");
 }
 
+#[test]
+fn test_dot_report_multi_file_single_graph() {
+    let foo = analyze_file_source("def foo():\n    return 1\n");
+    let bar = cfg::build_cfgs(
+        "def bar():\n    return 2\n",
+        "other.py",
+        &CfgOptions::default(),
+    );
+    let dot = pycfg_rs::writer::write_dot_report(&[foo, bar]);
+    assert_eq!(dot.matches("digraph CFG {").count(), 1);
+    assert!(dot.contains("subgraph cluster_file_0"));
+    assert!(dot.contains("subgraph cluster_file_1"));
+}
+
 fn analyze_file_source(source: &str) -> cfg::FileCfg {
     cfg::build_cfgs(source, "test.py", &CfgOptions::default())
 }
@@ -592,7 +700,7 @@ fn test_cli_json_output() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
-    assert!(parsed["functions"].is_array());
+    assert!(parsed["files"].is_array());
 }
 
 #[test]
@@ -609,7 +717,7 @@ fn test_cli_function_targeting() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
-    let funcs = parsed["functions"].as_array().unwrap();
+    let funcs = parsed["files"][0]["functions"].as_array().unwrap();
     assert_eq!(funcs.len(), 1);
     assert_eq!(funcs[0]["name"], "my_func");
 }
@@ -620,19 +728,17 @@ fn test_cli_directory_input() {
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
-    assert!(parsed.is_array(), "multiple files should produce JSON array");
-    let arr = parsed.as_array().unwrap();
+    let arr = parsed["files"].as_array().unwrap();
     assert!(arr.len() >= 4, "should have >= 4 files, got {}", arr.len());
 }
 
 #[test]
 fn test_cli_multiple_files_text() {
-    let output = run_pycfg(&[
-        "tests/test_code/basic_if.py",
-        "tests/test_code/loops.py",
-    ]);
+    let output = run_pycfg(&["tests/test_code/basic_if.py", "tests/test_code/loops.py"]);
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("# file: tests/test_code/basic_if.py"));
+    assert!(stdout.contains("# file: tests/test_code/loops.py"));
     assert!(stdout.contains("def check_sign:"));
     assert!(stdout.contains("def my_func:"));
 }
@@ -640,7 +746,8 @@ fn test_cli_multiple_files_text() {
 #[test]
 fn test_cli_explicit_exceptions() {
     let output = run_pycfg(&[
-        "--format", "json",
+        "--format",
+        "json",
         "--explicit-exceptions",
         "tests/test_code/try_except.py",
     ]);
@@ -663,44 +770,55 @@ fn test_cli_nonexistent_file() {
 
 #[test]
 fn test_cli_multi_file_text_separator() {
-    // Catches: `i > 0` mutations in main (line 144)
-    // Multiple files should have a blank-line separator between them
+    let output = run_pycfg(&["tests/test_code/basic_if.py", "tests/test_code/loops.py"]);
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.starts_with('\n'),
+        "output should not start with blank line"
+    );
+    assert!(stdout.contains("\n\n# file: tests/test_code/loops.py\n\n"));
+}
+
+#[test]
+fn test_cli_json_single_vs_multi() {
+    let output1 = run_pycfg(&["--format", "json", "tests/test_code/basic_if.py"]);
+    let stdout1 = String::from_utf8_lossy(&output1.stdout);
+    let parsed1: serde_json::Value = serde_json::from_str(&stdout1).unwrap();
+    assert!(
+        parsed1.is_object(),
+        "single file JSON should be an object envelope"
+    );
+    assert_eq!(parsed1["files"].as_array().unwrap().len(), 1);
+
+    let output2 = run_pycfg(&[
+        "--format",
+        "json",
+        "tests/test_code/basic_if.py",
+        "tests/test_code/loops.py",
+    ]);
+    let stdout2 = String::from_utf8_lossy(&output2.stdout);
+    let parsed2: serde_json::Value = serde_json::from_str(&stdout2).unwrap();
+    assert!(
+        parsed2.is_object(),
+        "multi-file JSON should use the same envelope"
+    );
+    assert_eq!(parsed2["files"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn test_cli_dot_multiple_files_single_graph() {
     let output = run_pycfg(&[
+        "--format",
+        "dot",
         "tests/test_code/basic_if.py",
         "tests/test_code/loops.py",
     ]);
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    // First file should NOT start with blank line (i > 0 is false for i=0)
-    assert!(!stdout.starts_with('\n'), "output should not start with blank line");
-    // Between files there should be a double blank line (separator + end of first file)
-    // The text writer ends each file's output with a newline. When i > 0,
-    // we add an extra "\n" before the next file's output.
-    // So we should see "...\n\n\ndef " pattern (end of prev + separator + start of next)
-    let first_end = stdout.find("def my_func:").expect("should contain my_func");
-    let between = &stdout[..first_end];
-    // Count consecutive newlines before "def my_func:"
-    let trailing_newlines = between.chars().rev().take_while(|&c| c == '\n').count();
-    assert!(
-        trailing_newlines >= 2,
-        "should have >= 2 newlines between files (separator), got {}",
-        trailing_newlines
-    );
-}
-
-#[test]
-fn test_cli_json_single_vs_multi() {
-    // Single file: JSON object
-    let output1 = run_pycfg(&["--format", "json", "tests/test_code/basic_if.py"]);
-    let stdout1 = String::from_utf8_lossy(&output1.stdout);
-    let parsed1: serde_json::Value = serde_json::from_str(&stdout1).unwrap();
-    assert!(parsed1.is_object(), "single file JSON should be an object");
-
-    // Multiple files: JSON array
-    let output2 = run_pycfg(&["--format", "json", "tests/test_code/basic_if.py", "tests/test_code/loops.py"]);
-    let stdout2 = String::from_utf8_lossy(&output2.stdout);
-    let parsed2: serde_json::Value = serde_json::from_str(&stdout2).unwrap();
-    assert!(parsed2.is_array(), "multi-file JSON should be an array");
+    assert_eq!(stdout.matches("digraph CFG {").count(), 1);
+    assert!(stdout.contains("subgraph cluster_file_0"));
+    assert!(stdout.contains("subgraph cluster_file_1"));
 }
 
 // ---------------------------------------------------------------------------
@@ -789,7 +907,11 @@ fn test_corpus_rich() {
         let (files, functions) = analyze_corpus(&dir);
         eprintln!("rich: {} files, {} functions", files, functions);
         assert!(files > 20, "expected >20 files, got {}", files);
-        assert!(functions > 200, "expected >200 functions, got {}", functions);
+        assert!(
+            functions > 200,
+            "expected >200 functions, got {}",
+            functions
+        );
     } else {
         eprintln!("Skipping rich corpus (not found). Run ./scripts/bootstrap-corpora.sh");
     }

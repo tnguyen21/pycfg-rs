@@ -115,8 +115,12 @@ def analyze_corpus(name: str, subdir: str, url: str, binary: str) -> CorpusResul
         result.error = f"JSON parse error: {e}"
         return result
 
-    if isinstance(data, dict):
-        data = [data]
+    if not isinstance(data, dict):
+        result.success = False
+        result.error = "Unexpected JSON shape"
+        return result
+
+    data = data.get("files", [])
 
     result.files = len(data)
 

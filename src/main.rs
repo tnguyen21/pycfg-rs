@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::path::PathBuf;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::Parser;
 use walkdir::WalkDir;
 
@@ -9,7 +9,11 @@ use pycfg_rs::cfg::{self, CfgOptions, FileCfg};
 use pycfg_rs::writer;
 
 #[derive(Parser)]
-#[command(name = "pycfg", version, about = "Generate control flow graphs for Python programs")]
+#[command(
+    name = "pycfg",
+    version,
+    about = "Generate control flow graphs for Python programs"
+)]
 struct Cli {
     /// Python source files, directories, or file::function targets
     #[arg(required = true)]
@@ -126,30 +130,16 @@ fn main() -> Result<()> {
 
     match cli.format {
         Format::Json => {
-            if all_cfgs.len() == 1 {
-                let json = writer::write_json(&all_cfgs[0]);
-                write_output(&mut stdout, &json)?;
-            } else {
-                let json =
-                    serde_json::to_string_pretty(&all_cfgs)
-                        .unwrap_or_else(|e| serde_json::json!({"error": e.to_string()}).to_string());
-                write_output(&mut stdout, &json)?;
-            }
+            let json = writer::write_json_report(&all_cfgs);
+            write_output(&mut stdout, &json)?;
         }
         Format::Text => {
-            for (i, file_cfg) in all_cfgs.iter().enumerate() {
-                if i > 0 {
-                    write_output(&mut stdout, "\n")?;
-                }
-                let text = writer::write_text(file_cfg);
-                write_output(&mut stdout, &text)?;
-            }
+            let text = writer::write_text_report(&all_cfgs);
+            write_output(&mut stdout, &text)?;
         }
         Format::Dot => {
-            for file_cfg in &all_cfgs {
-                let dot = writer::write_dot(file_cfg);
-                write_output(&mut stdout, &dot)?;
-            }
+            let dot = writer::write_dot_report(&all_cfgs);
+            write_output(&mut stdout, &dot)?;
         }
     }
 
@@ -207,11 +197,20 @@ mod tests {
     #[test]
     fn test_collect_python_files_directory() {
         let files = collect_python_files("tests/test_code");
-        assert!(files.len() >= 4, "should find multiple .py files, got {}", files.len());
+        assert!(
+            files.len() >= 4,
+            "should find multiple .py files, got {}",
+            files.len()
+        );
         assert!(files.iter().all(|f| f.ends_with(".py")));
         // Should be sorted
         for window in files.windows(2) {
-            assert!(window[0] <= window[1], "files should be sorted: {} > {}", window[0], window[1]);
+            assert!(
+                window[0] <= window[1],
+                "files should be sorted: {} > {}",
+                window[0],
+                window[1]
+            );
         }
     }
 
@@ -240,7 +239,11 @@ mod tests {
         // Catches: == to != for .py extension check (line 67)
         // A nonexistent .py file should still be included (by extension check)
         let files = collect_python_files("nonexistent_file_xyz.py");
-        assert_eq!(files.len(), 1, "nonexistent .py file should be included by extension check");
+        assert_eq!(
+            files.len(),
+            1,
+            "nonexistent .py file should be included by extension check"
+        );
         assert_eq!(files[0], "nonexistent_file_xyz.py");
     }
 
@@ -248,6 +251,9 @@ mod tests {
     fn test_collect_python_files_nonexistent_non_py() {
         // A nonexistent non-.py file should NOT be included
         let files = collect_python_files("nonexistent_file_xyz.txt");
-        assert!(files.is_empty(), "nonexistent non-.py file should not be included");
+        assert!(
+            files.is_empty(),
+            "nonexistent non-.py file should not be included"
+        );
     }
 }

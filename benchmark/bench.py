@@ -113,12 +113,9 @@ def bench_pycfg_rs(files: list[str], iterations: int) -> dict:
     output = last_result.stdout.decode()
     try:
         data = json.loads(output)
-        if isinstance(data, list):
-            num_functions = sum(len(f.get("functions", [])) for f in data)
-            num_files = len(data)
-        else:
-            num_functions = len(data.get("functions", []))
-            num_files = 1
+        file_cfgs = data.get("files", []) if isinstance(data, dict) else []
+        num_functions = sum(len(f.get("functions", [])) for f in file_cfgs)
+        num_files = len(file_cfgs)
     except json.JSONDecodeError:
         num_functions = 0
         num_files = 0
