@@ -813,10 +813,7 @@ mod tests {
                 diagnostics: vec!["Expected ')'".to_string()],
             },
         ]);
-        assert_eq!(
-            text,
-            "# file: a.py\nOK\n\n# file: b.py\n- Expected ')'\n"
-        );
+        assert_eq!(text, "# file: a.py\nOK\n\n# file: b.py\n- Expected ')'\n");
     }
 
     #[test]
