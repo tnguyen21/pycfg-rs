@@ -33,6 +33,15 @@ pycfg --format json src/handler.py
 # DOT output (pipe to graphviz for visualization)
 pycfg --format dot src/handler.py | dot -Tsvg -o cfg.svg
 
+# List discovered functions without building CFG text
+pycfg --list-functions src/handler.py
+
+# Emit only per-function metrics
+pycfg --summary --format json src/handler.py
+
+# Emit parse diagnostics for one or more files
+pycfg --diagnostics --format json src/
+
 # Enable per-statement exception edges inside try blocks
 pycfg --explicit-exceptions src/handler.py
 ```
@@ -118,6 +127,16 @@ GraphViz DOT format. Directory and multi-file runs emit one valid DOT document w
 - Orange: exception/raise
 - Purple: break
 - Cyan: continue
+
+## Query Modes
+
+In addition to full CFG output, `pycfg` supports a few narrower query-style modes:
+
+- `--list-functions`: list exact qualified function names and line numbers
+- `--summary`: emit per-function metric summaries without block bodies
+- `--diagnostics`: emit parse diagnostics without attempting CFG generation
+
+`--format text` and `--format json` work for all of these modes. `--format dot` is only valid for full CFG output.
 
 ## Supported Python Constructs
 

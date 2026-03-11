@@ -1,0 +1,21 @@
+{
+  "files": [
+    {
+      "file": "tests/test_code/loops.py",
+      "functions": [
+        {
+          "name": "my_func",
+          "line": 1
+        },
+        {
+          "name": "while_loop",
+          "line": 9
+        },
+        {
+          "name": "break_loop",
+          "line": 16
+        }
+      ]
+    }
+  ]
+}

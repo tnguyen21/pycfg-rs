@@ -1,5 +1,6 @@
 use ruff_python_ast::{self as ast, Stmt};
 use ruff_python_parser::{Mode, ParseOptions};
+use serde::Serialize;
 use std::error::Error;
 use std::fmt;
 
@@ -20,6 +21,12 @@ use symbols::visit_functions;
 #[derive(Default)]
 pub struct CfgOptions {
     pub explicit_exceptions: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct FunctionInfo {
+    pub name: String,
+    pub line: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,6 +53,22 @@ pub fn parse_diagnostics(source: &str) -> Vec<String> {
         Ok(_) => Vec::new(),
         Err(err) => err.diagnostics,
     }
+}
+
+pub fn try_list_functions(source: &str) -> Result<Vec<FunctionInfo>, ParseError> {
+    let stmts = parse_module_stmts(source)?;
+    let mut functions = Vec::new();
+    visit_functions(source, &stmts, &mut |function| {
+        functions.push(FunctionInfo {
+            name: function.qualified_name,
+            line: function.line,
+        });
+    });
+    Ok(functions)
+}
+
+pub fn list_functions(source: &str) -> Vec<FunctionInfo> {
+    try_list_functions(source).unwrap_or_else(|err| panic!("failed to list functions: {err}"))
 }
 
 pub fn try_build_cfgs(

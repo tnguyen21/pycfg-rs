@@ -1,0 +1,34 @@
+{
+  "files": [
+    {
+      "file": "tests/test_code/basic_if.py",
+      "function_count": 1,
+      "totals": {
+        "files": 1,
+        "functions": 1,
+        "blocks": 7,
+        "edges": 8,
+        "branches": 2,
+        "max_cyclomatic_complexity": 3
+      },
+      "functions": [
+        {
+          "name": "check_sign",
+          "line": 1,
+          "blocks": 7,
+          "edges": 8,
+          "branches": 2,
+          "cyclomatic_complexity": 3
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "files": 1,
+    "functions": 1,
+    "blocks": 7,
+    "edges": 8,
+    "branches": 2,
+    "max_cyclomatic_complexity": 3
+  }
+}

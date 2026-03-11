@@ -1,0 +1,2 @@
+functions=1 blocks=7 edges=8 branches=2 max_cyclomatic_complexity=3
+check_sign [L1] blocks=7 edges=8 branches=2 cyclomatic_complexity=3

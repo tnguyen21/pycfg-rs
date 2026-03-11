@@ -120,6 +120,49 @@ fn test_try_build_cfg_for_function_returns_parse_error() {
 }
 
 #[test]
+fn test_try_list_functions_returns_qualified_names() {
+    let functions = try_list_functions(
+        "def outer():\n    def inner():\n        return 1\nclass Foo:\n    def bar(self):\n        return 2\n",
+    )
+    .unwrap();
+    assert_eq!(
+        functions,
+        vec![
+            FunctionInfo {
+                name: "outer".to_string(),
+                line: 1,
+            },
+            FunctionInfo {
+                name: "outer.inner".to_string(),
+                line: 2,
+            },
+            FunctionInfo {
+                name: "Foo.bar".to_string(),
+                line: 5,
+            },
+        ]
+    );
+}
+
+#[test]
+fn test_try_list_functions_returns_parse_error() {
+    let err = try_list_functions("def foo(:\n    pass\n").unwrap_err();
+    assert!(!err.diagnostics().is_empty());
+}
+
+#[test]
+fn test_list_functions_wrapper_returns_functions() {
+    let functions = list_functions("def foo():\n    return 1\n");
+    assert_eq!(
+        functions,
+        vec![FunctionInfo {
+            name: "foo".to_string(),
+            line: 1,
+        }]
+    );
+}
+
+#[test]
 fn test_parse_diagnostics_reports_invalid_source() {
     let diagnostics = parse_diagnostics("def foo(:\n    pass\n");
     assert!(!diagnostics.is_empty());

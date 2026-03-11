@@ -180,3 +180,101 @@ fn test_cli_dot_multiple_files_single_graph() {
     assert!(stdout.contains("subgraph cluster_file_0"));
     assert!(stdout.contains("subgraph cluster_file_1"));
 }
+
+#[test]
+fn test_cli_list_functions_text_output() {
+    assert_cli_output_matches_golden(
+        &["--list-functions", "tests/test_code/loops.py"],
+        "tests/golden/loops.list-functions.text",
+    );
+}
+
+#[test]
+fn test_cli_list_functions_json_output() {
+    assert_cli_output_matches_golden(
+        &[
+            "--list-functions",
+            "--format",
+            "json",
+            "tests/test_code/loops.py",
+        ],
+        "tests/golden/loops.list-functions.json",
+    );
+}
+
+#[test]
+fn test_cli_list_functions_exact_target() {
+    let output = run_pycfg(&[
+        "--list-functions",
+        "--format",
+        "json",
+        "tests/test_code/loops.py::my_func",
+    ]);
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
+    let functions = parsed["files"][0]["functions"].as_array().unwrap();
+    assert_eq!(functions.len(), 1);
+    assert_eq!(functions[0]["name"], "my_func");
+}
+
+#[test]
+fn test_cli_summary_text_output() {
+    assert_cli_output_matches_golden(
+        &["--summary", "tests/test_code/basic_if.py"],
+        "tests/golden/basic_if.summary.text",
+    );
+}
+
+#[test]
+fn test_cli_summary_json_output() {
+    assert_cli_output_matches_golden(
+        &[
+            "--summary",
+            "--format",
+            "json",
+            "tests/test_code/basic_if.py",
+        ],
+        "tests/golden/basic_if.summary.json",
+    );
+}
+
+#[test]
+fn test_cli_diagnostics_json_output() {
+    let output = run_pycfg(&[
+        "--diagnostics",
+        "--format",
+        "json",
+        "tests/test_inputs/invalid_syntax.py",
+    ]);
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
+    let files = parsed["files"].as_array().unwrap();
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0]["file"], "tests/test_inputs/invalid_syntax.py");
+    let diagnostics = files[0]["diagnostics"].as_array().unwrap();
+    assert!(!diagnostics.is_empty());
+    assert!(diagnostics[0].as_str().unwrap().contains("Expected"));
+}
+
+#[test]
+fn test_cli_diagnostics_text_output_for_valid_file() {
+    let output = run_pycfg(&["--diagnostics", "tests/test_code/basic_if.py"]);
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout, "tests/test_code/basic_if.py\nOK\n");
+}
+
+#[test]
+fn test_cli_query_modes_reject_dot_output() {
+    let output = run_pycfg(&[
+        "--summary",
+        "--format",
+        "dot",
+        "tests/test_code/basic_if.py",
+    ]);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--format dot is only supported for CFG output"));
+}
