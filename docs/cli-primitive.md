@@ -69,6 +69,9 @@ Today that mostly means:
 
 - Exact `file.py::FunctionName` targeting.
 - Directory traversal over Python files.
+- `--list-functions` for exact-name discovery.
+- `--summary` for metric-only inspection.
+- `--diagnostics` for machine-readable parse failure reporting.
 - Whole-file analysis when function targeting is not needed.
 - Optional `--explicit-exceptions` when a caller wants more detailed
   exceptional edges.

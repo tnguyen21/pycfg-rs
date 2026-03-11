@@ -20,6 +20,7 @@ It already has:
 - A working CFG analyzer with support for the major control-flow constructs this project cares about.
 - Text, JSON, and DOT outputs.
 - Directory traversal, exact function targeting, and parse-error skipping.
+- Narrow query-oriented modes for function discovery, summaries, and diagnostics.
 - CI, corpus smoke tests, and focused mutation-testing discipline.
 - Golden tests for stable CLI output contracts.
 
