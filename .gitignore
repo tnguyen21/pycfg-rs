@@ -5,6 +5,5 @@ benchmark/.venv/
 benchmark/corpora/
 staticfg/
 python-graphs/
-mutants.out/
-mutants.out.old/
+mutants.out*
 report/
