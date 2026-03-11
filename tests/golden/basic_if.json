@@ -1,0 +1,131 @@
+{
+  "files": [
+    {
+      "file": "tests/test_code/basic_if.py",
+      "functions": [
+        {
+          "name": "check_sign",
+          "line": 1,
+          "blocks": [
+            {
+              "id": 0,
+              "label": "entry",
+              "statements": [
+                {
+                  "line": 2,
+                  "text": "if x > 0:"
+                }
+              ],
+              "successors": [
+                {
+                  "target": 2,
+                  "label": "True"
+                },
+                {
+                  "target": 4,
+                  "label": "False"
+                }
+              ]
+            },
+            {
+              "id": 1,
+              "label": "exit",
+              "statements": [],
+              "successors": []
+            },
+            {
+              "id": 2,
+              "label": "body",
+              "statements": [
+                {
+                  "line": 3,
+                  "text": "result = \"positive\""
+                }
+              ],
+              "successors": [
+                {
+                  "target": 3,
+                  "label": "fallthrough"
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "label": "body",
+              "statements": [
+                {
+                  "line": 8,
+                  "text": "return result"
+                }
+              ],
+              "successors": [
+                {
+                  "target": 1,
+                  "label": "return"
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "label": "body",
+              "statements": [
+                {
+                  "line": 4,
+                  "text": "elif x == 0:"
+                }
+              ],
+              "successors": [
+                {
+                  "target": 5,
+                  "label": "True"
+                },
+                {
+                  "target": 6,
+                  "label": "False"
+                }
+              ]
+            },
+            {
+              "id": 5,
+              "label": "body",
+              "statements": [
+                {
+                  "line": 5,
+                  "text": "result = \"zero\""
+                }
+              ],
+              "successors": [
+                {
+                  "target": 3,
+                  "label": "fallthrough"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "label": "body",
+              "statements": [
+                {
+                  "line": 7,
+                  "text": "result = \"negative\""
+                }
+              ],
+              "successors": [
+                {
+                  "target": 3,
+                  "label": "fallthrough"
+                }
+              ]
+            }
+          ],
+          "metrics": {
+            "blocks": 7,
+            "edges": 8,
+            "branches": 2,
+            "cyclomatic_complexity": 3
+          }
+        }
+      ]
+    }
+  ]
+}

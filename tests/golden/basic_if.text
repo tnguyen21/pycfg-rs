@@ -1,0 +1,31 @@
+def check_sign:
+
+  Block 0 (entry):
+    [L2] if x > 0:
+    -> Block 2 [True]
+    -> Block 4 [False]
+
+  Block 1 (exit):
+
+  Block 2:
+    [L3] result = "positive"
+    -> Block 3 [fallthrough]
+
+  Block 3:
+    [L8] return result
+    -> Block 1 [return]
+
+  Block 4:
+    [L4] elif x == 0:
+    -> Block 5 [True]
+    -> Block 6 [False]
+
+  Block 5:
+    [L5] result = "zero"
+    -> Block 3 [fallthrough]
+
+  Block 6:
+    [L7] result = "negative"
+    -> Block 3 [fallthrough]
+
+  # blocks=7 edges=8 branches=2 cyclomatic_complexity=3

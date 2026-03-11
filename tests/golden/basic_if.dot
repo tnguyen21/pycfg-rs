@@ -1,0 +1,27 @@
+digraph CFG {
+    graph [rankdir=TB];
+    node [shape=record, fontname="Courier", fontsize=10];
+
+    subgraph cluster_f0_check_sign {
+        label="check_sign";
+        style=rounded;
+
+        f0_check_sign_0 [shape=Mrecord, label="Block 0 (entry)\l[L2] if x \> 0:\l"];
+        f0_check_sign_1 [shape=Mrecord, label="Block 1 (exit)\l"];
+        f0_check_sign_2 [shape=record, label="Block 2 (body)\l[L3] result = \"positive\"\l"];
+        f0_check_sign_3 [shape=record, label="Block 3 (body)\l[L8] return result\l"];
+        f0_check_sign_4 [shape=record, label="Block 4 (body)\l[L4] elif x == 0:\l"];
+        f0_check_sign_5 [shape=record, label="Block 5 (body)\l[L5] result = \"zero\"\l"];
+        f0_check_sign_6 [shape=record, label="Block 6 (body)\l[L7] result = \"negative\"\l"];
+
+        f0_check_sign_0 -> f0_check_sign_2 [label="True", color=green];
+        f0_check_sign_0 -> f0_check_sign_4 [label="False", color=red];
+        f0_check_sign_2 -> f0_check_sign_3 [label="fallthrough", color=black];
+        f0_check_sign_3 -> f0_check_sign_1 [label="return", color=blue];
+        f0_check_sign_4 -> f0_check_sign_5 [label="True", color=green];
+        f0_check_sign_4 -> f0_check_sign_6 [label="False", color=red];
+        f0_check_sign_5 -> f0_check_sign_3 [label="fallthrough", color=black];
+        f0_check_sign_6 -> f0_check_sign_3 [label="fallthrough", color=black];
+    }
+
+}

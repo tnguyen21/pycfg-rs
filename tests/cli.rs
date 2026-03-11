@@ -3,30 +3,42 @@ mod common;
 use common::run_pycfg;
 use tempfile::tempdir;
 
-#[test]
-fn test_cli_text_output() {
-    let output = run_pycfg(&["tests/test_code/basic_if.py"]);
+fn assert_cli_output_matches_golden(args: &[&str], golden_path: &str) {
+    let output = run_pycfg(args);
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("def check_sign:"));
-    assert!(stdout.contains("Block 0 (entry):"));
+    let expected =
+        std::fs::read_to_string(golden_path).unwrap_or_else(|e| panic!("{golden_path}: {e}"));
+    assert_eq!(
+        stdout.trim_end_matches('\n'),
+        expected.trim_end_matches('\n'),
+        "golden mismatch for {:?}",
+        args
+    );
+}
+
+#[test]
+fn test_cli_text_output() {
+    assert_cli_output_matches_golden(
+        &["tests/test_code/basic_if.py"],
+        "tests/golden/basic_if.text",
+    );
 }
 
 #[test]
 fn test_cli_json_output() {
-    let output = run_pycfg(&["--format", "json", "tests/test_code/basic_if.py"]);
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
-    assert!(parsed["files"].is_array());
+    assert_cli_output_matches_golden(
+        &["--format", "json", "tests/test_code/basic_if.py"],
+        "tests/golden/basic_if.json",
+    );
 }
 
 #[test]
 fn test_cli_dot_output() {
-    let output = run_pycfg(&["--format", "dot", "tests/test_code/basic_if.py"]);
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.starts_with("digraph CFG {"));
+    assert_cli_output_matches_golden(
+        &["--format", "dot", "tests/test_code/basic_if.py"],
+        "tests/golden/basic_if.dot",
+    );
 }
 
 #[test]
