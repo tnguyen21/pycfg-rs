@@ -17,7 +17,7 @@ use pycfg_rs::writer;
 )]
 struct Cli {
     /// Python source files, directories, or file::function targets
-    #[arg(required = true)]
+    #[arg(required_unless_present = "context")]
     targets: Vec<String>,
 
     /// Output format
@@ -40,6 +40,10 @@ struct Cli {
     #[arg(long, conflicts_with_all = ["list_functions", "summary"])]
     diagnostics: bool,
 
+    /// Print LLM usage guide and tool context
+    #[arg(long, conflicts_with_all = ["list_functions", "summary", "diagnostics"])]
+    context: bool,
+
     /// Enable verbose logging (-v info, -vv debug)
     #[arg(long, short = 'v', action = clap::ArgAction::Count)]
     verbose: u8,
@@ -58,6 +62,7 @@ enum QueryMode {
     ListFunctions,
     Summary,
     Diagnostics,
+    Context,
 }
 
 #[derive(Serialize)]
@@ -161,6 +166,12 @@ fn main() -> Result<()> {
         explicit_exceptions: cli.explicit_exceptions,
     };
 
+    if query_mode == QueryMode::Context {
+        let mut stdout = std::io::stdout().lock();
+        write_output(&mut stdout, &context_text())?;
+        return Ok(());
+    }
+
     let mut all_cfgs: Vec<FileCfg> = Vec::new();
     let mut function_reports: Vec<FunctionListFile> = Vec::new();
     let mut summary_reports: Vec<SummaryFile> = Vec::new();
@@ -260,6 +271,7 @@ fn main() -> Result<()> {
                         diagnostics: cfg::parse_diagnostics(&source),
                     });
                 }
+                QueryMode::Context => unreachable!("handled above"),
             }
         }
     }
@@ -346,20 +358,33 @@ fn main() -> Result<()> {
                 Format::Dot => unreachable!("validated above"),
             }
         }
+        QueryMode::Context => unreachable!("handled above"),
     }
 
     Ok(())
 }
 
+const LLM_USAGE_GUIDE: &str = include_str!("../docs/llm-usage.md");
+
+fn context_text() -> String {
+    format!(
+        "pycfg-rs {version}\n\n{guide}",
+        version = env!("CARGO_PKG_VERSION"),
+        guide = LLM_USAGE_GUIDE,
+    )
+}
+
 fn validate_query_mode(query_mode: QueryMode, format: Format) -> Result<()> {
-    if query_mode != QueryMode::Cfg && format == Format::Dot {
+    if !matches!(query_mode, QueryMode::Cfg | QueryMode::Context) && format == Format::Dot {
         bail!("--format dot is only supported for CFG output");
     }
     Ok(())
 }
 
 fn query_mode(cli: &Cli) -> QueryMode {
-    if cli.list_functions {
+    if cli.context {
+        QueryMode::Context
+    } else if cli.list_functions {
         QueryMode::ListFunctions
     } else if cli.summary {
         QueryMode::Summary
@@ -691,6 +716,7 @@ mod tests {
             list_functions: false,
             summary: false,
             diagnostics: false,
+            context: false,
             verbose: 0,
         };
         assert_eq!(query_mode(&cli), QueryMode::Cfg);
@@ -705,6 +731,10 @@ mod tests {
         cli.summary = false;
         cli.diagnostics = true;
         assert_eq!(query_mode(&cli), QueryMode::Diagnostics);
+
+        cli.diagnostics = false;
+        cli.context = true;
+        assert_eq!(query_mode(&cli), QueryMode::Context);
     }
 
     #[test]
