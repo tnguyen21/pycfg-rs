@@ -7,3 +7,4 @@ staticfg/
 python-graphs/
 mutants.out*
 report/
+bench/
