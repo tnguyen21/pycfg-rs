@@ -58,7 +58,7 @@ Fast Rust CLI that parses Python source files and generates intra-procedural con
 - **log / env_logger**: Logging with `-v`/`-vv` verbosity levels
 - **tempfile** (dev): Temporary directories in integration tests
 - No external services, databases, or network calls at runtime
-- Sibling tool: [pycallgraph-rs](https://github.com/tnguyen21/pycallgraph-rs) (`pycg`) for inter-procedural call graphs
+- Sibling tool: [pycallgraph-rs](https://github.com/nwyin/pycallgraph-rs) (`pycg`) for inter-procedural call graphs
 
 ## Gotchas
 - The ruff parser crates are **git dependencies** pinned to a specific rev — `cargo update` won't bump them. To update, change the `rev` in `Cargo.toml` and verify nothing broke in the AST API.

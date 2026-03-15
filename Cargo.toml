@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "Fast, Rust-based control flow graph generator for Python"
 license = "MIT"
-repository = "https://github.com/tnguyen21/pycfg-rs"
+repository = "https://github.com/nwyin/pycfg-rs"
 keywords = ["python", "control-flow-graph", "static-analysis", "cfg", "cyclomatic-complexity"]
 categories = ["command-line-utilities", "development-tools"]
 

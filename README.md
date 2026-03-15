@@ -2,7 +2,7 @@
 
 Fast, Rust-based control flow graph (CFG) generator for Python. Parses Python source files and produces intra-procedural control flow graphs for each function, without requiring a Python runtime.
 
-Sibling tool to [pycallgraph-rs](https://github.com/tnguyen21/pycallgraph-rs) (`pycg`) — together they cover inter-procedural (call graphs) and intra-procedural (control flow) static analysis for Python.
+Sibling tool to [pycallgraph-rs](https://github.com/nwyin/pycallgraph-rs) (`pycg`) — together they cover inter-procedural (call graphs) and intra-procedural (control flow) static analysis for Python.
 
 ## Installation
 
