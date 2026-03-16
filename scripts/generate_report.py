@@ -100,13 +100,15 @@ Function: process (line 1)
 
 WHY_ESSAY = """\
 <p>
-LLMs are surprisingly bad at control flow reasoning. Given a function with
-nested branches, exception handlers, and early returns, models routinely
-mis-predict which paths are reachable, confuse exception routing with normal
-flow, and miss edge cases in <code>try</code>/<code>finally</code> blocks.
-This is not a model-size problem &mdash; it is a representation problem.
-Source code buries control flow in indentation and keywords. CFGs make it
-explicit.
+LLMs struggle with control flow reasoning. Given a function with nested
+branches, exception handlers, and early returns, models mis-predict which
+paths are reachable, confuse exception routing with normal flow, and miss
+edge cases in <code>try</code>/<code>finally</code> blocks. The
+<a href="https://arxiv.org/abs/2501.16456">CoCoNUT benchmark</a> (2025)
+found that even the best model traced only 47% of control flow paths
+correctly, with accuracy dropping sharply as complexity increased. This is
+a representation problem &mdash; source code buries control flow in
+indentation and keywords. CFGs make it explicit.
 </p>
 
 <p>
@@ -134,13 +136,6 @@ line numbers &mdash; everything an agent needs to cross-reference back to
 source. The text format is designed to be readable in a prompt without
 extra parsing. DOT output feeds into Graphviz for visual inspection.
 Three formats, one structural truth.
-</p>
-
-<p>
-Speed matters because CFG queries belong inside the editing loop, not
-before it. At 65 ms across 100 files and 15,000+ functions per second,
-pycfg-rs is fast enough to invoke on every prompt. You call it live,
-so the results are never stale.
 </p>
 
 <p>
